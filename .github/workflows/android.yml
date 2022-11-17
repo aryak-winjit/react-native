@@ -1,0 +1,47 @@
+name: Create Android Build
+
+on:
+  workflow_dispatch:
+#   push:
+#     branches:
+#       - main
+  
+jobs:
+  Build:
+    name: Create Android Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch code
+        uses: actions/checkout@v2
+        
+      - name: Installing node
+        uses: actions/setup-node@v2
+
+      - name: Install dependencies
+        run: |
+          yarn install
+
+      - name: Building bundle
+        run: |
+          npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res/
+
+      - name: Make Gradlew Executable
+        run: cd android && chmod +x ./gradlew
+
+      - name: Clean Gradle for Build
+        run: |
+          cd android && ./gradlew clean
+
+      - name: Create build
+        run: |
+          cd android && ./gradlew assembleRelease -x bundleReleaseJsAndAssets
+      
+      # Firebase app distribution
+      - name: Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1.4.0
+        with:
+          appId: ${{ secrets.APP_ID }}
+          # token: ${{ secrets.FIREBASE_TOKEN }}
+          serviceCredentialsFileContent: ${{ secrets.GSA_APP_DISTRIBUTION_KEY }}
+          file: android/app/build/outputs/apk/release/app-release.apk
+          groups: tester1
